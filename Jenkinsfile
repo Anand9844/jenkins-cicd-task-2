@@ -9,6 +9,7 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 checkout scm
@@ -17,39 +18,33 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                sh 'npm install'
+                bat 'npm install'
             }
         }
 
         stage('Test') {
             steps {
-                sh 'npm test'
+                bat 'npm test'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $IMAGE_NAME:$BUILD_NUMBER .'
-                sh 'docker tag $IMAGE_NAME:$BUILD_NUMBER $IMAGE_NAME:latest'
+                bat 'docker build -t %IMAGE_NAME%:%BUILD_NUMBER% .'
+                bat 'docker tag %IMAGE_NAME%:%BUILD_NUMBER% %IMAGE_NAME%:latest'
             }
         }
 
         stage('Deploy') {
             steps {
-                sh '''
-                    docker rm -f $CONTAINER_NAME || true
-                    docker run -d \
-                      --name $CONTAINER_NAME \
-                      -p $HOST_PORT:$CONTAINER_PORT \
-                      $IMAGE_NAME:latest
-                '''
+                bat 'docker rm -f %CONTAINER_NAME% 2>nul || exit /b 0'
+                bat 'docker run -d --name %CONTAINER_NAME% -p %HOST_PORT%:%CONTAINER_PORT% %IMAGE_NAME%:latest'
             }
         }
 
         stage('Verify Deployment') {
             steps {
-                sh 'sleep 5'
-                sh 'curl -f http://localhost:$HOST_PORT/health'
+                powershell 'Start-Sleep -Seconds 5; Invoke-WebRequest -UseBasicParsing http://localhost:$env:HOST_PORT/health'
             }
         }
     }
@@ -59,11 +54,13 @@ pipeline {
             echo 'CI/CD pipeline completed successfully.'
             echo 'Application: http://localhost:3001'
         }
+
         failure {
             echo 'Pipeline failed. Check the stage logs above.'
         }
+
         always {
-            sh 'docker ps -a || true'
+            bat 'docker ps -a'
         }
     }
 }
